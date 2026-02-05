@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-A GUI tool to convert multiple JPG images to a single PDF file.
+A tool to convert multiple JPG images to a single PDF file.
+Supports both GUI and command-line modes.
 """
 
 import os
 import subprocess
+import argparse
 from PIL import Image
 
 
@@ -135,9 +137,9 @@ def check_write_permission(directory):
         return False
 
 
-def main():
+def gui_mode():
     """
-    Main function to run the GUI tool.
+    Run the tool in GUI mode.
     """
     print("Image to PDF Converter")
     print("=====================")
@@ -204,6 +206,85 @@ def main():
                 )
     else:
         print("\nConversion failed. Please check the error message above.")
+
+
+def main():
+    """
+    Main function to handle both GUI and command-line modes.
+    """
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description="Convert multiple images to a single PDF file"
+    )
+    parser.add_argument(
+        "images", 
+        nargs="*", 
+        help="Path to image files (if not provided, GUI mode will be used)"
+    )
+    parser.add_argument(
+        "-o", "--output", 
+        default="output.pdf", 
+        help="Output PDF file name (default: output.pdf)"
+    )
+
+    args = parser.parse_args()
+
+    # Check if images were provided via command line
+    if args.images:
+        # Command-line mode
+        print("Image to PDF Converter")
+        print("=====================")
+        print()
+
+        # Validate input files
+        valid_images = []
+        for img_path in args.images:
+            if os.path.exists(img_path):
+                valid_images.append(img_path)
+            else:
+                print(f"Warning: File not found: {img_path}")
+
+        if not valid_images:
+            print("Error: No valid images provided")
+            return
+
+        # Get output path
+        output_pdf = args.output
+        if not output_pdf.lower().endswith(".pdf"):
+            output_pdf += ".pdf"
+
+        # Check write permission for the output directory
+        output_dir = os.path.dirname(output_pdf) if os.path.dirname(output_pdf) else os.getcwd()
+        current_dir = os.getcwd()
+
+        if not check_write_permission(output_dir):
+            print(f"Error: No write permission to {output_dir}")
+            print(f"Falling back to current directory: {current_dir}")
+            # Use current directory with the same filename
+            output_filename = os.path.basename(output_pdf)
+            output_pdf = os.path.join(current_dir, output_filename)
+            print(f"New output location: {output_pdf}")
+
+        print(f"Converting {len(valid_images)} images to {output_pdf}...")
+        success = convert_images_to_pdf(valid_images, output_pdf)
+
+        if success:
+            print("\nConversion completed successfully!")
+            print(f"Output PDF saved to: {output_pdf}")
+            # Try to open the output PDF
+            if os.name == "posix":
+                try:
+                    subprocess.run(["open", output_pdf], check=True)
+                    print("Opening the output PDF file...")
+                except:
+                    print(
+                        "Could not open the output PDF automatically. Please open it manually."
+                    )
+        else:
+            print("\nConversion failed. Please check the error message above.")
+    else:
+        # GUI mode
+        gui_mode()
 
 
 if __name__ == "__main__":
